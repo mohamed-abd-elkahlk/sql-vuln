@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Profile</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="login.html">Login</a>
+    <a href="register.html">Register</a>
+    <a href="user.html">User Profile</a>
+    <a href="admin.html">Admin Dashboard</a>
+  </nav>
+
+  <div class="container">
+    <h1>User Profile Dashboard</h1>
+    <div id="status">Verifying access...</div>
+    <pre id="user-data" style="display: none;"></pre>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <script>
+    async function loadUserProfile() {
+      const statusDiv = document.getElementById('status');
+      const dataPre = document.getElementById('user-data');
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        statusDiv.className = 'error';
+        statusDiv.innerText = 'Not logged in. Redirecting to login...';
+        setTimeout(() => window.location.href = '/login.html', 2000);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/user/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          statusDiv.innerText = 'Authorized: User Session Active';
+          statusDiv.className = 'success';
+          dataPre.innerText = JSON.stringify(data, null, 2);
+          dataPre.style.display = 'block';
+        } else {
+          statusDiv.className = 'error';
+          statusDiv.innerText = data.error || 'Access Denied';
+          dataPre.style.display = 'none';
+        }
+      } catch (err) {
+        statusDiv.className = 'error';
+        statusDiv.innerText = 'Connection error. Is the server running?';
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = '/login.html';
+    }
+
+    loadUserProfile();
+  </script>
+</body>
+</html>

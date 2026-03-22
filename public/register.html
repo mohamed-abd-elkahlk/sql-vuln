@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register - SQL Injection Lab</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="login.html">Login</a>
+    <a href="register.html">Register</a>
+    <a href="user.html">User Profile</a>
+    <a href="admin.html">Admin Dashboard</a>
+  </nav>
+
+  <div class="container">
+    <h1>Register</h1>
+    <form id="register-form">
+      <label>Username:</label>
+      <input type="text" id="username" required>
+      <label>Password:</label>
+      <input type="password" id="password" required>
+      <button type="submit">Register (Vulnerable)</button>
+    </form>
+    <div id="message" style="display: none;"></div>
+    
+    <div class="exploit-box">
+      <h3>Admin Role Injection:</h3>
+      <p>Use this as your username:</p>
+      <code>hacker', 'password', 'admin')--</code>
+      <p>This will result in an <code>INSERT</code> query that manually specifies <code>'admin'</code> as the role, bypassing the default 'user' role.</p>
+    </div>
+    
+    <p style="text-align: center;">Already have an account? <a href="/login.html">Login here</a></p>
+  </div>
+
+  <script>
+    document.getElementById('register-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const msgDiv = document.getElementById('message');
+      msgDiv.style.display = 'none';
+
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        msgDiv.className = 'success';
+        msgDiv.innerText = 'Registration successful! Redirecting to login...';
+        msgDiv.style.display = 'block';
+        setTimeout(() => window.location.href = '/login.html', 2000);
+      } else {
+        msgDiv.className = 'error';
+        msgDiv.innerText = data.error;
+        msgDiv.style.display = 'block';
+      }
+    };
+  </script>
+</body>
+</html>

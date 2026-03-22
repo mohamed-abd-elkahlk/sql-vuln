@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - SQL Injection Lab</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="login.html">Login</a>
+    <a href="register.html">Register</a>
+    <a href="user.html">User Profile</a>
+    <a href="admin.html">Admin Dashboard</a>
+  </nav>
+
+  <div class="container">
+    <h1>Login</h1>
+    <form id="login-form">
+      <label>Username:</label>
+      <input type="text" id="username" required placeholder="Try admin'--">
+      <label>Password:</label>
+      <input type="password" id="password" required>
+      <button type="submit">Login (Vulnerable Path)</button>
+    </form>
+    <div id="error-message" class="error" style="display: none;"></div>
+
+    <div class="exploit-box">
+        <h3>How to Bypass Login:</h3>
+        <p>Use <code>admin'--</code> as the username and any password. The <code>--</code> comments out the password check in the SQL query.</p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('login-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const errorDiv = document.getElementById('error-message');
+      errorDiv.style.display = 'none';
+
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      const response = await fetch('/api/auth/login-vulnerable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+        if (data.role === 'admin') {
+          window.location.href = '/admin.html';
+        } else {
+          window.location.href = '/user.html';
+        }
+      } else {
+        errorDiv.innerText = data.error;
+        errorDiv.style.display = 'block';
+      }
+    };
+  </script>
+</body>
+</html>

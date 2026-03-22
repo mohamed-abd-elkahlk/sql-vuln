@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Injection & JWT Lab</title>
+  <style>
+    body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
+    section { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+    h2 { margin-top: 0; }
+    code { background: #f4f4f4; padding: 2px 5px; border-radius: 3px; }
+    .success { color: green; font-weight: bold; }
+    .error { color: red; font-weight: bold; }
+    #token-display { word-break: break-all; background: #eee; padding: 10px; display: none; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>SQL Injection & JWT Lab</h1>
+
+  <section>
+    <h2>Login (Vulnerable)</h2>
+    <p>Try bypassing with username: <code>admin'--</code> and any password.</p>
+    <form id="vulnerable-form">
+      <label>Username:</label>
+      <input type="text" name="username" id="v-user" required><br>
+      <label>Password:</label>
+      <input type="password" name="password" id="v-pass" required><br>
+      <button type="submit">Login (SQLi Vulnerable)</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Login (Secure)</h2>
+    <form id="secure-form">
+      <label>Username:</label>
+      <input type="text" name="username" id="s-user" required><br>
+      <label>Password:</label>
+      <input type="password" name="password" id="s-pass" required><br>
+      <button type="submit">Login (Parameterized Query)</button>
+    </form>
+  </section>
+
+  <section id="result-section">
+    <h2>Auth Result</h2>
+    <div id="status-message">Please log in.</div>
+    <div id="token-display">
+      <strong>JWT Token:</strong> <span id="jwt-content"></span>
+    </div>
+    <button id="admin-button" style="margin-top: 15px; display: none;">Access Protected Admin Dashboard</button>
+  </section>
+
+  <section id="admin-data-section" style="display: none;">
+    <h2>Admin Data</h2>
+    <pre id="admin-json"></pre>
+  </section>
+
+  <hr>
+
+  <section>
+    <h3>How the Attack Works</h3>
+    <ol>
+      <li>An attacker uses <code>admin'--</code> as the username.</li>
+      <li>The SQL query becomes: <code>SELECT * FROM users WHERE username = 'admin'--' AND password = '...'</code>.</li>
+      <li>The database returns the <strong>admin</strong> user record because the password check is commented out.</li>
+      <li>The server, seeing a valid user object, signs a <strong>JWT</strong> with <code>role: 'admin'</code>.</li>
+      <li>The attacker now has a legitimate JWT that they can use to access any route protected by <code>authenticateToken</code>.</li>
+    </ol>
+  </section>
+
+  <script>
+    let currentToken = null;
+
+    async function handleLogin(url, formData) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await response.json();
+
+      const statusMsg = document.getElementById('status-message');
+      const tokenDisplay = document.getElementById('token-display');
+      const jwtContent = document.getElementById('jwt-content');
+      const adminButton = document.getElementById('admin-button');
+
+      if (response.ok) {
+        statusMsg.className = 'success';
+        statusMsg.innerText = `Successfully logged in as: ${data.role} (${data.message})`;
+        currentToken = data.token;
+        jwtContent.innerText = currentToken;
+        tokenDisplay.style.display = 'block';
+        adminButton.style.display = 'inline-block';
+      } else {
+        statusMsg.className = 'error';
+        statusMsg.innerText = data.error || 'Login failed';
+        tokenDisplay.style.display = 'none';
+        adminButton.style.display = 'none';
+        currentToken = null;
+      }
+    }
+
+    document.getElementById('vulnerable-form').onsubmit = (e) => {
+      e.preventDefault();
+      handleLogin('/login-vulnerable', { 
+        username: document.getElementById('v-user').value, 
+        password: document.getElementById('v-pass').value 
+      });
+    };
+
+    document.getElementById('secure-form').onsubmit = (e) => {
+      e.preventDefault();
+      handleLogin('/login-secure', { 
+        username: document.getElementById('s-user').value, 
+        password: document.getElementById('s-pass').value 
+      });
+    };
+
+    document.getElementById('admin-button').onclick = async () => {
+      const response = await fetch('/admin-dashboard', {
+        headers: { 'Authorization': `Bearer ${currentToken}` }
+      });
+      const data = await response.json();
+      
+      const adminSection = document.getElementById('admin-data-section');
+      const adminJson = document.getElementById('admin-json');
+      
+      adminSection.style.display = 'block';
+      adminJson.innerText = JSON.stringify(data, null, 2);
+      
+      if (!response.ok) {
+        adminJson.className = 'error';
+      } else {
+        adminJson.className = 'success';
+      }
+    };
+  </script>
+</body>
+</html>
